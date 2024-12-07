@@ -1,104 +1,208 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:task_management/Page/Home.dart';
+import 'package:task_management/Page/RegisterPage.dart';
+import 'package:task_management/Page/User.dart';
+import 'package:task_management/service/AuthService.dart';
 
-class LoginPage extends StatefulWidget {
+class Login extends StatefulWidget {
   @override
-  _LoginPageState createState() => _LoginPageState();
+  _LoginState createState() => _LoginState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+class _LoginState extends State<Login> {
+  final TextEditingController email = TextEditingController()..text = 'mdkutub150gmail.com';
+  final TextEditingController password = TextEditingController()..text = '123456';
+  final storage = FlutterSecureStorage();
+  bool _isPasswordVisible = false;
+  bool isLoading = false;
 
-  final String apiUrl = "http://139.59.65.225:8052/user/login";
+  AuthService authService = AuthService();
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final requestBody = jsonEncode({
-      "email": _emailController.text,
-      "password": _passwordController.text,
+  Future<void> loginUser(BuildContext context) async {
+    setState(() {
+      isLoading = true; // Start loading
     });
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: requestBody,
-    );
+    try {
+      final response = await authService.login(email.text, password.text);
 
-    if (response.statusCode == 200) {
-      final responseBody = jsonDecode(response.body);
+      // Successful login, role-based navigation
+      final role = await authService.getUserRole(); // Get role from AuthService
 
+      if (role == 'ADMIN') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+        );
+      } else if (role == 'USER') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => User()),
+        );
+      }
+    } catch (error) {
+      print('Login failed: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(responseBody['message'] ?? 'Login successful')),
+        SnackBar(content: Text('Login failed. Please try again.')),
       );
-
-      // Extract and use token if needed
-      final token = responseBody['data']['token'];
-      print("Token: $token");
-
-      // Navigate to another page or perform additional actions
-    } else {
-      final responseBody = jsonDecode(response.body);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(responseBody['message'] ?? 'Login failed')),
-      );
+    } finally {
+      setState(() {
+        isLoading = false; // Stop loading
+      });
     }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _login,
-                child: Text('Login'),
-              ),
-            ],
+      body: Stack(
+        children: [
+          // Main content
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(20.0), // Apply padding of 10 on all sides
+                  child: Image.network(
+                    'https://i.postimg.cc/sXCZ47RM/woman-self-kiosk-checkout-payment-store-107791-30537.png',
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Card(
+                    color: Colors.lightGreenAccent, // Set the background color to amber
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Login",
+                            style: GoogleFonts.lato(
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          _buildTextField(email, "Email", Icons.email),
+                          SizedBox(height: 15),
+                          _buildPasswordField(),
+                          SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: isLoading ? null : () => loginUser(context),
+                            child: Text(
+                              isLoading ? "Please wait..." : "Login",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold, // Makes the text bold
+                                color: Colors.black,         // Sets the font color to black
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                              backgroundColor: Colors.blue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 15),
+                          TextButton(
+                            onPressed: isLoading
+                                ? null
+                                : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => RegistrationPage()),
+                              );
+                            },
+                            child: Text(
+                              'Registration',
+                              style: TextStyle(
+                                color: Colors.black,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          // Loading spinner
+          if (isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.lightGreenAccent),
+                ),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String labelText, IconData icon) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: labelText,
+        labelStyle: TextStyle(color: Colors.black),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: Colors.black),
+        ),
+        prefixIcon: Icon(icon, color: Colors.black),
+        contentPadding: EdgeInsets.symmetric(vertical: 8), // Adjust vertical padding for smaller height
+        isDense: true, // Makes the text field more compact
+      ),
+      style: TextStyle(color: Colors.black),
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextField(
+      controller: password,
+      decoration: InputDecoration(
+        labelText: "Password",
+        labelStyle: TextStyle(color: Colors.black),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: Colors.black),
+        ),
+        prefixIcon: Icon(Icons.lock, color: Colors.black),
+        suffixIcon: IconButton(
+          icon: Icon(
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            color: Colors.black,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
+        ),
+        contentPadding: EdgeInsets.symmetric(vertical: 8), // Adjust vertical padding for smaller height
+        isDense: true, // Makes the text field more compact
+      ),
+      obscureText: !_isPasswordVisible,
+      style: TextStyle(color: Colors.black),
     );
   }
 }

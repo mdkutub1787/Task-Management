@@ -3,7 +3,6 @@ import 'package:task_management/Page/ActivityPage.dart';
 import 'package:task_management/Page/LoginPage.dart';
 import 'package:task_management/Page/RegisterPage.dart';
 
-
 void main() {
   runApp(MyApp());
 }
@@ -16,12 +15,14 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/',
+      initialRoute: '/',  // This is the starting route (LoginPage)
       routes: {
-        '/': (context) => LoginPage(),
-        '/register': (context) => RegisterPage(),
-        '/activity': (context) => ActivityPage(),
+        '/': (context) => Login(),  // Route for login page
+        '/register': (context) => RegistrationPage(),  // Route for register page
+        '/activity': (context) => ActivityPage(),  // Route for activity page
       },
     );
   }
+
+
 }
